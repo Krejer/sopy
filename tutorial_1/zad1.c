@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include<unistd.h>
 
 #define ERR(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__), exit(EXIT_FAILURE))
 
@@ -14,33 +15,34 @@
 // , podczas gdy stat info o pliku, ktorego link dotyczy, lstat i stat zwraca 0 jesli sie udalo, wpp -1
 // int stat(const char *restrict path, struct stat *restrict buf); argument path wskazuje na sciezke do pliku, ktory chcemy odczytac, do bufa sa przesylane info o pliku
 // sys/stat.h — data returned by the stat() function
+// char * getcwd(char * buf, size_t size); w buf getcwd zapisze nazwe obecnego katalogu, getcwd zwraca buf, jeśli się nie powiedzie zwraca null, ustawia odpowiednio errno,
+// buf musi byc wczesniej zaalokowana tablica, WAZNE - buf musi byc bezwzgledna sciezka, zaczynajaca sie od /... - ona jest jednoznaczna
+// int chdir(const char *path); podajemy po prostu w path nazwe katalogu na ktory chcemy zmienic, 0 jeśli sie powiedzie, -1 wpp. path nie musi byc bezwzgledny, moze byc wzgledna - 
+// odnosi sie do katalogu, w ktorym obecnie sie znajdujemy
+
 void scan_dir()
 {
     DIR *dirp; // tworze zmienna typu DIR * zeby moc korzystac z opendir
-    struct dirent *dp;
-    struct stat filestat;
+    struct dirent *dp; // potrzebuje to, zeby korzystac z readdir
+    struct stat filestat; // potrzebuje to, zeby korzystac z lstat
     int dirs = 0, files = 0, links = 0, other = 0;
-    if ((dirp = opendir(".")) == NULL)
+    if ((dirp = opendir(".")) == NULL) // sprawdzam czy sie otworzył, . to katalog obecny, roboczy
         ERR("opendir");
-    do
+    while ((dp = readdir(dirp)) != NULL)
     {
-        errno = 0;
-        if ((dp = readdir(dirp)) != NULL)
-        {
-            if (lstat(dp->d_name, &filestat))
-                ERR("lstat");
-            if (S_ISDIR(filestat.st_mode))
-                dirs++;
-            else if (S_ISREG(filestat.st_mode))
-                files++;
-            else if (S_ISLNK(filestat.st_mode))
-                links++;
-            else
-                other++;
-        }
-    } while (dp != NULL);
+        if (lstat(dp->d_name, &filestat)) // lstat zapisuje info o pliku w filestat
+            ERR("lstat");
+        if (S_ISDIR(filestat.st_mode))
+            dirs++;
+        else if (S_ISREG(filestat.st_mode))
+            files++;
+        else if (S_ISLNK(filestat.st_mode))
+            links++;
+        else
+            other++;
+    }
 
-    if (errno != 0)
+    if (errno != 0) // sprawdzam, czy readdir sie ladnie zakonczyl, czy jakis blad sie pojawil przed readdira
         ERR("readdir");
     if (closedir(dirp))
         ERR("closedir");

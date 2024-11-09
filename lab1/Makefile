@@ -1,5 +1,5 @@
 liczba=
-nazwa=testowy1_niskopoziomowy
+nazwa=testowy2
 
 $(nazwa)$(liczba): $(nazwa)$(liczba).o
 	gcc -o $(nazwa)$(liczba) $(nazwa)$(liczba).o

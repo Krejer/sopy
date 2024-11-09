@@ -1,4 +1,4 @@
-liczba=3
+liczba=5
 
 zad$(liczba): zad$(liczba).o
 	gcc -o zad$(liczba) zad$(liczba).o

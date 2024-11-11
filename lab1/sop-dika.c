@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 500
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
@@ -105,10 +106,10 @@ void write_stage3(const char *const path, const struct stat *const stat_buf)
 
     while ((read_size = bulk_read(fd_1, buf, Max)) > 0)
     {
-        if(fwrite(buf, 1, read_size, stdout) < read_size)
+        if(write(STDOUT_FILENO, buf, read_size) < read_size)
         {
             close(fd_1);
-            ERR("fwrite");
+            ERR("write");
         }
     }
     if(read_size < 0) 
@@ -119,8 +120,7 @@ void write_stage3(const char *const path, const struct stat *const stat_buf)
 
     while(fgets(buf, Max, stdin) != NULL)
     {
-        if(strcmp(buf, "\n") == 0) 
-            break;
+        if(strcmp(buf, "\n") == 0) break;
 
         ssize_t bytes_written = bulk_write(fd_1, buf, strlen(buf));
         if(bytes_written < 0)
@@ -140,18 +140,15 @@ int walk(const char *name, const struct stat *s, int type, struct FTW *f)
         case FTW_DNR:
         case FTW_D:
             fprintf(stdout, "Katalog: %s\n", name);
-            // show_stage2(name, &filestat);
             break;
         case FTW_F:
             fprintf(stdout, "Plik: %s\n", name);
-            // show_stage2(name, &filestat);
             break;
         default:
             fprintf(stdout, "Nieznany obiekt: %s", name);
-            // show_stage2(name, &filestat);
             break;
     }
-    return 0;
+    return 0; // tu musi zostać zwrocone 0
 }
 
 void walk_stage4(const char *const path, const struct stat *const stat_buf)
@@ -171,19 +168,21 @@ int interface_stage1()
     
     char x = path[0];
     if(x == '4') return 0;
-    if(x != '1' && x != '2' && x !='3')
-    {
-        fprintf(stderr, "Invalind input\n");
-        return 1;
-    }
+    if(x != '1' && x != '2' && x !='3') ERR("Inlvalid input");
 
     printf("Enter file path: ");
-    if((fgets(path, sizeof(path), stdin)) == NULL) ERR("fgets");
+    // if((fgets(path, sizeof(path), stdin)) == NULL) ERR("fgets");
 
-    path[strlen(path) - 1] = '\0'; // fgets wczytało new line character, trzeba go usunąć i zamienić na to
+    // path[strlen(path) - 1] = '\0'; // fgets wczytało new line character, trzeba go usunąć i zamienić na '\0'
 
-    if(stat(path, &filestat) == -1) ERR("stat");
-    
+    int ch, i = 0; //- Imo lepsze podejście, nie trzeba podmieniac ostatniego znaku
+    while ((ch = getchar()) != '\n' && ch != EOF && i < sizeof(path) - 1) {
+        path[i++] = ch;
+    }
+    path[i] = '\0';
+
+
+    if(stat(path, &filestat) == -1) ERR("stat"); // tutaj to robimy, zeby potem wewnatrz funkcji wszystkich musiec statować
     
     switch (x)
     {

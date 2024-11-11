@@ -87,7 +87,7 @@ int main(int argc, char ** argv)
         {
             case 'p':
             nazwa = optarg;
-            if(!(nftw(nazwa, walk, Max, FTW_PHYS) == 0)) fprintf(output, "acces denied\n");
+            if(!(nftw(nazwa, walk, Max, FTW_PHYS) == 0)) fprintf(output, "acces denied\n"); // tutaj Max oznacza maksymalną głębokość przeszukania drzewa, nie trzeba chyba tego level jak wyzej robic
                 break;
             case 'e':
                 break;

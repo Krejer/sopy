@@ -71,8 +71,10 @@ void show_stage2(const char *const path, const struct stat *const stat_buf)
     {
         FILE * s1;
         if((s1 = fopen(path, "r")) == NULL) ERR("fopen");
-        char ch;
-        while((ch = fgetc(s1)) != EOF) printf("%c", ch);
+        // char ch;
+        // while((ch = fgetc(s1)) != EOF) printf("%c", ch);
+        char ch[Max];
+        while((fgets(ch, Max, s1)) != NULL) printf("%s", ch);
         printf("\n");
         if(fclose(s1)) ERR("fclose");
     }

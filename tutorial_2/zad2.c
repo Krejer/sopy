@@ -76,8 +76,8 @@ void parent_work(int k, int p, int l)
     alarm(l * 10);
     while (last_signal != SIGALRM) // dopoki nie uplynie iles tam czasu
     {
-        nanosleep(&tk, NULL);
-        if (kill(0, SIGUSR1) < 0) // wysyla sigusr1 do wszystkich procesow z grupy
+        nanosleep(&tk, NULL); // tu musimy uzyć nanosleep, zeby nie było konfliku między sleep a alarm(sleep zwraca SIGALRM)
+        if (kill(0, SIGUSR1) < 0) // wysyla sigusr1 do wszystkich procesow z grupy, 0 wysyła tez sygnał samemu sobie(w sumie logiczne, wysyła do całej grupy)
             ERR("kill");
         nanosleep(&tp, NULL); // potem se kima
         if (kill(0, SIGUSR2) < 0) // to samo dla sigusr2
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
         usage();
     sethandler(sigchld_handler, SIGCHLD);
     sethandler(SIG_IGN, SIGUSR1); // chyba chodzi o to, zeby ignorowac dopoki jakies dziecko nie powstanie, wtedy zmieniamy, zeby wypisywal, ze dziecko otrzymalo dany sygnał
-    sethandler(SIG_IGN, SIGUSR2);
+    sethandler(SIG_IGN, SIGUSR2); // to jest po to, zeby proces rodzic ignorował SIGUSR1 i SIGUSR2, zeby się sam nie zabił wysłanym sygnałem
     create_children(n, l);
     parent_work(k, p, l);
     while (wait(NULL) > 0)

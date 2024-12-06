@@ -3,6 +3,7 @@
         "stdio.h": "c",
         "stdlib.h": "c",
         "unistd.h": "c",
-        "ftw.h": "c"
+        "ftw.h": "c",
+        "dirent.h": "c"
     }
 }

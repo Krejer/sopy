@@ -9,9 +9,10 @@
 #include <time.h>
 #include <unistd.h>
 #include<signal.h>
+#include<ctype.h>
 
 #define ERR(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__), kill(0, SIGKILL), exit(EXIT_FAILURE))
-#define MAX 1000
+#define MAX 256
 
 volatile sig_atomic_t last_signal = 0;
 
@@ -78,8 +79,34 @@ void usage(int argc, char* argv[])
     exit(EXIT_FAILURE);
 }
 
-void child_work(char * text)
+void child_work(char * text, int i, char * filename)
 {
+    char name[MAX];
+    snprintf(name, sizeof(name), "%s-%d", filename, i);
+    int out;
+    ssize_t count;
+    int licznik = 1, index = 0;
+    if ((out = open(name, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0777)) < 0) ERR("open");
+    while(index < strlen(text))
+    {
+        if((text[index] >= 65 && text[index] <= 90) || (text[index] >= 97 && text[index] <= 122))
+        {
+            if(licznik == 1)
+            {
+                if(text[index] <= 90) text[index] = tolower(text[index]);
+                else text[index] = toupper(text[index]);
+                licznik = 0;
+                struct timespec t = {0, 250000000};
+                nanosleep(&t, NULL);
+                char buf = text[index];
+                if((count = write(out, &buf, 1)) < 0) ERR("write");
+            }
+            else licznik = 1;
+
+        }
+        index++;
+    }
+    if(close(out)) ERR("close");
     sigset_t empty;
     sigemptyset(&empty);
     pid_t pid = getpid();
@@ -91,7 +118,7 @@ int main(int argc, char* argv[])
 {
     if(argc != 3) usage(argc, argv);
     int in;
-    const char * filename = argv[1];
+    char * filename = argv[1];
     struct stat sb;
     if(stat(filename, &sb) == -1) ERR("stat");
     off_t len = sb.st_size;
@@ -118,11 +145,11 @@ int main(int argc, char* argv[])
                 ERR("lseek");
                 close(in);
             }
-            ssize_t count;
-            if((count = read(in, tekst, dlugosc)) < 0) ERR("read");
+            ssize_t count = bulk_read(in, tekst, dlugosc);
+            if(count < 0) ERR("bulkread");
             tekst[count] = '\0';
             close(in);
-            child_work(tekst);
+            child_work(tekst, i+1, filename);
             exit(EXIT_SUCCESS);    
         }
         ile += dlugosc;

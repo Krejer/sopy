@@ -74,7 +74,7 @@ void parent_work(sigset_t oldmask)
     {
         last_signal = 0;
         while (last_signal != SIGUSR2) // z tego co rozumiem czekamy az dojdzie sygnal sigusr2 i zwiekszamy ilosc otrzymanych
-            sigsuspend(&oldmask);
+            sigsuspend(&oldmask); // to jest po to, zeby program po otrzymaniu SIGUSR2 nie zakończył działania
         count++;
         printf("[PARENT] received %d SIGUSR2\n", count);
     }

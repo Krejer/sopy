@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -23,11 +24,7 @@ void sethandler(void (*f)(int), int sigNo)
         ERR("sigaction");
 }
 
-void sig_handler(int sig)
-{
-    sig_count++;
-    ;
-}
+void sig_handler(int sig) { sig_count++; }
 
 void child_work(int m)
 {
@@ -41,6 +38,40 @@ void child_work(int m)
     }
 }
 
+ssize_t bulk_read(int fd, char *buf, size_t count)
+{
+    ssize_t c;
+    ssize_t len = 0;
+    do
+    {
+        c = TEMP_FAILURE_RETRY(read(fd, buf, count));
+        if (c < 0)
+            return c;
+        if (c == 0)
+            return len;  // EOF
+        buf += c;
+        len += c;
+        count -= c;
+    } while (count > 0);
+    return len;
+}
+
+ssize_t bulk_write(int fd, char *buf, size_t count)
+{
+    ssize_t c;
+    ssize_t len = 0;
+    do
+    {
+        c = TEMP_FAILURE_RETRY(write(fd, buf, count));
+        if (c < 0)
+            return c;
+        buf += c;
+        len += c;
+        count -= c;
+    } while (count > 0);
+    return len;
+}
+
 void parent_work(int b, int s, char *name)
 {
     int i, in, out;
@@ -48,26 +79,25 @@ void parent_work(int b, int s, char *name)
     char *buf = malloc(s);
     if (!buf)
         ERR("malloc");
-    if ((out = open(name, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0777)) < 0)
+    if ((out = TEMP_FAILURE_RETRY(open(name, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0777))) < 0)
         ERR("open");
-    if ((in = open("/dev/urandom", O_RDONLY)) < 0)
+    if ((in = TEMP_FAILURE_RETRY(open("/dev/urandom", O_RDONLY))) < 0)
         ERR("open");
     for (i = 0; i < b; i++)
     {
-        if ((count = read(in, buf, s)) < 0)
+        if ((count = bulk_read(in, buf, s)) < 0)
             ERR("read");
-        if ((count = write(out, buf, count)) < 0) // count potem bedzie zmienna, ktora powie ile bajtow zostało faktycznie wpisanych przez write'a
+        if ((count = bulk_write(out, buf, count)) < 0)
             ERR("read");
-        if (fprintf(stderr, "Block of %ld bytes transfered. Signals RX:%d\n", count, sig_count) < 0)
+        if (TEMP_FAILURE_RETRY(fprintf(stderr, "Block of %ld bytes transfered. Signals RX:%d\n", count, sig_count)) < 0)
             ERR("fprintf");
-        ;
     }
-    if (close(in))
+    if (TEMP_FAILURE_RETRY(close(in)))
         ERR("close");
-    if (close(out))
+    if (TEMP_FAILURE_RETRY(close(out)))
         ERR("close");
     free(buf);
-    if (kill(0, SIGUSR2)) // zeby rodzic zabil sam siebie razem z dzieckiem na pewno 
+    if (kill(0, SIGUSR1))
         ERR("kill");
 }
 

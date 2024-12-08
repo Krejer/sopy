@@ -21,8 +21,8 @@
 
 void child_work(int i)
 {
-    srand(time(NULL) % getpid());
-    int t = 5 + rand() % (10 - 5 + i);
+    srand(time(NULL) % getpid()); // to nam gwarantuje, ze seed bedzie unikalny, wpp moga sie powtorzyc wartości
+    int t = 5 + rand() % (10 - 5 + 1); // tu dostajemy po prostu liczbę z przedziału [0, 5]
     sleep(t);
     printf("Process with PID: %d terminates\n", getpid());
 }
@@ -38,7 +38,6 @@ void create_children(int n)
             child_work(n);
             exit(EXIT_SUCCESS); // to musi byc, wpp proces potomny bedzie tworzyl kolejny proces potomny
         }
-
     }
 }
 

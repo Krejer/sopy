@@ -36,7 +36,7 @@ void sigchld_handler(int sig)
     for (;;)
     {
         pid = waitpid(0, NULL, WNOHANG);
-        if (pid == 0)
+        if (pid == 0) // zaden proces sie jeszcze nie zakonczyl, wiec nie mamy na co czekac
             return;
         if (pid <= 0)
         {

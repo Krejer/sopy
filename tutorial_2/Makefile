@@ -1,8 +1,9 @@
-liczba=2
+liczba=1
+nazwa = zadanie
 
-zad$(liczba): zad$(liczba).o
-	gcc -o zad$(liczba) zad$(liczba).o
-zad$(liczba).o: zad$(liczba).c
-	gcc -Wall -c zad$(liczba).c -o zad$(liczba).o
+zad$(liczba): $(nazwa)$(liczba).o
+	gcc -o $(nazwa)$(liczba) $(nazwa)$(liczba).o
+zad$(liczba).o: $(nazwa)$(liczba).c
+	gcc -Wall -c $(nazwa)$(liczba).c -o $(nazwa)$(liczba).o
 clean:
-	rm zad$(liczba).c zad$(liczba).o zad$(liczba)
+	rm $(nazwa)$(liczba).c $(nazwa)$(liczba).o $(nazwa)$(liczba)

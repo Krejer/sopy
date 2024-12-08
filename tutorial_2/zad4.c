@@ -43,6 +43,9 @@ void child_work(int m)
 
 void parent_work(int b, int s, char *name)
 {
+    char * buf;
+    buf = malloc(s);
+    if(!buf) ERR("malloc");
     int i, in, out;
     ssize_t count;
     char *buf = malloc(s);

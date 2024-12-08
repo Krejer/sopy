@@ -44,7 +44,7 @@ ssize_t bulk_read(int fd, char *buf, size_t count)
     ssize_t len = 0;
     do
     {
-        c = TEMP_FAILURE_RETRY(read(fd, buf, count));
+        c = TEMP_FAILURE_RETRY(read(fd, buf, count)); // to działa tak, ze jak jakis sygnal przerwie dzialanie to jest znowu restartowany z parametrami wejściowymi
         if (c < 0)
             return c;
         if (c == 0)

@@ -16,6 +16,8 @@
 
 volatile sig_atomic_t last_signal = 0;
 
+volatile sig_atomic_t sig_int_received = 0;
+
 #define TEMP_FAILURE_RETRY(expression) \
   (__extension__({ \
     long int __result; \
@@ -27,6 +29,23 @@ volatile sig_atomic_t last_signal = 0;
 
 
 void sighandler(int sig){last_signal = sig;}
+
+void sig_int_parent_handler(int sig) {
+    struct sigaction sa_ignore, sa_restore;
+
+    // Ignoruj SIGINT
+    sa_ignore.sa_handler = SIG_IGN;
+    sigemptyset(&sa_ignore.sa_mask);
+    sa_ignore.sa_flags = 0;
+    if (sigaction(SIGINT, &sa_ignore, &sa_restore) < 0) ERR("sigaction");
+
+    // Wyślij SIGINT do dzieci
+    if (kill(0, sig) < 0) ERR("kill");
+
+    // Przywróć obsługę SIGINT
+    if (sigaction(SIGINT, &sa_restore, NULL) < 0) ERR("sigaction");
+}
+
 
 ssize_t bulk_read(int fd, char* buf, size_t count)
 {
@@ -81,13 +100,23 @@ void usage(int argc, char* argv[])
 
 void child_work(char * text, int i, char * filename)
 {
+    sethandler(sighandler, SIGINT);
     char name[MAX];
     snprintf(name, sizeof(name), "%s-%d", filename, i);
     int out;
     ssize_t count;
-    int licznik = 1, index = 0;
+    int licznik = 1, index = 0, czy = 0;
     if ((out = open(name, O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0777)) < 0) ERR("open");
-    while(index < strlen(text))
+    pid_t pid = getpid();
+    sigset_t empty;
+    sigemptyset(&empty);
+    while(last_signal != SIGUSR1 && last_signal != SIGINT) sigsuspend(&empty);
+    if(last_signal == SIGINT)
+    {
+        if(close(out) < 0) ERR("close");
+        exit(EXIT_SUCCESS);
+    }
+    while(index < strlen(text) && czy == 0)
     {
         if((text[index] >= 65 && text[index] <= 90) || (text[index] >= 97 && text[index] <= 122))
         {
@@ -96,8 +125,21 @@ void child_work(char * text, int i, char * filename)
                 if(text[index] <= 90) text[index] = tolower(text[index]);
                 else text[index] = toupper(text[index]);
                 licznik = 0;
-                struct timespec t = {0, 250000000};
-                nanosleep(&t, NULL);
+                struct timespec t = {0, 250000000}, rem;
+                while(nanosleep(&t, &rem) == -1)
+                {
+                    if(errno == EINTR)
+                    {
+                        if(last_signal == SIGINT && czy == 0)
+                        {
+                            char buf = text[index];
+                            if((count = write(out, &buf, 1)) < 0) ERR("write");
+                            if(close(out) < 0) ERR("close");
+                            exit(EXIT_SUCCESS);
+                        }
+                    }
+                    t = rem;
+                }
                 char buf = text[index];
                 if((count = write(out, &buf, 1)) < 0) ERR("write");
             }
@@ -107,10 +149,6 @@ void child_work(char * text, int i, char * filename)
         index++;
     }
     if(close(out)) ERR("close");
-    sigset_t empty;
-    sigemptyset(&empty);
-    pid_t pid = getpid();
-    while(last_signal != SIGUSR1) sigsuspend(&empty);
     if(fprintf(stdout, "PID: %d\ntekst: %s\n", pid, text) < 0) ERR("fprintf");
 }
 
@@ -124,6 +162,7 @@ int main(int argc, char* argv[])
     off_t len = sb.st_size;
 
     sethandler(sighandler, SIGUSR1); 
+    sethandler(sig_int_parent_handler, SIGINT);
 
     int n = atoi(argv[2]);
     if(n <= 0 || n > 10) ERR("Invalid input");
